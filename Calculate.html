@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Root Finder Estetik (Newton-Raphson & Regula Falsi)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0d1117 20%, #1e2a47 100%);
+      color: #f0f6fc;
+      margin: 40px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+      color: #58a6ff;
+    }
+
+    input {
+      width: 70px;
+      margin: 3px;
+      padding: 5px;
+      border-radius: 8px;
+      border: none;
+      text-align: center;
+      background-color: #161b22;
+      color: #f0f6fc;
+    }
+
+    button {
+      background: linear-gradient(90deg, #238636, #2ea043);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      margin-top: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: linear-gradient(90deg, #2ea043, #3fb950);
+      transform: scale(1.05);
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 16px;
+      background: rgba(22, 27, 34, 0.8);
+      padding: 15px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+
+    canvas {
+      margin-top: 30px;
+      background: white;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0px 0px 20px rgba(0, 255, 255, 0.2);
+    }
+
+    #bg-upload {
+      margin-top: 20px;
+      background: #30363d;
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
+    #bg-upload input {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Root Finder </h2>
+  <p>Muhammad Al Farizzy</p>
+  <p>Newton-Raphson & Regula Falsi Method</p>
+
+  <div>
+    <input id="x1" placeholder="x1"> <input id="y1" placeholder="y1"><br>
+    <input id="x2" placeholder="x2"> <input id="y2" placeholder="y2"><br>
+    <input id="x3" placeholder="x3"> <input id="y3" placeholder="y3"><br>
+  </div>
+
+  <button onclick="calculate()"> Hitung Akar</button>
+
+  <div id="result"></div>
+  <canvas id="chart" width="700" height="400"></canvas>
+
+
+  <script>
+    let chartInstance = null;
+
+    function calculate() {
+      const x1v = parseFloat(document.getElementById("x1").value);
+      const y1v = parseFloat(document.getElementById("y1").value);
+      const x2v = parseFloat(document.getElementById("x2").value);
+      const y2v = parseFloat(document.getElementById("y2").value);
+      const x3v = parseFloat(document.getElementById("x3").value);
+      const y3v = parseFloat(document.getElementById("y3").value);
+
+      if ([x1v, y1v, x2v, y2v, x3v, y3v].some(isNaN)) {
+        alert("⚠️ Masukkan semua nilai koordinat dengan benar!");
+        return;
+      }
+
+      // Hitung koefisien kuadrat
+      const denom = (x1v - x2v) * (x1v - x3v) * (x2v - x3v);
+      const a = (x3v*(y2v - y1v) + x2v*(y1v - y3v) + x1v*(y3v - y2v)) / denom;
+      const b = (x3v**2*(y1v - y2v) + x2v**2*(y3v - y1v) + x1v**2*(y2v - y3v)) / denom;
+      const c = (x2v*x3v*(x2v - x3v)*y1v + x3v*x1v*(x3v - x1v)*y2v + x1v*x2v*(x1v - x2v)*y3v) / denom;
+
+      const f = x => a*x*x + b*x + c;
+      const fprime = x => 2*a*x + b;
+
+      // Newton-Raphson
+      let x0 = 0, tol = 1e-6, x1 = x0;
+      for (let i = 0; i < 50; i++) {
+        const fx = f(x0);
+        const fpx = fprime(x0);
+        if (Math.abs(fpx) < 1e-10) break;
+        x1 = x0 - fx / fpx;
+        if (Math.abs(x1 - x0) < tol) break;
+        x0 = x1;
+      }
+
+      // Regula Falsi
+      let a0 = -10, b0 = 10, xr = b0;
+      for (let i = 0; i < 100; i++) {
+        const fa = f(a0), fb = f(b0);
+        xr = b0 - fb * (a0 - b0) / (fa - fb);
+        if (Math.abs(f(xr)) < tol) break;
+        if (fa * f(xr) < 0) b0 = xr; else a0 = xr;
+      }
+
+      // tampilkan hasil
+      document.getElementById("result").innerHTML = `
+        <b>Persamaan:</b> f(x) = ${a.toFixed(4)}x² + ${b.toFixed(4)}x + ${c.toFixed(4)}<br>
+        <b>Akar Newton-Raphson:</b> ${x1.toFixed(6)}<br>
+        <b>Akar Regula Falsi:</b> ${xr.toFixed(6)}
+      `;
+
+      // Siapkan data grafik
+      const xs = [], ys = [];
+      for (let i = -10; i <= 10; i += 0.2) {
+        xs.push(i.toFixed(2));
+        ys.push(Number(f(i).toFixed(4)));
+      }
+
+      // Titik akar
+      const roots = [x1, xr];
+      const rootPoints = roots.map(r => ({ x: r, y: f(r) }));
+
+      // Hapus grafik lama
+      if (chartInstance) chartInstance.destroy();
+
+      const ctx = document.getElementById("chart").getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 600, 0);
+      gradient.addColorStop(0, "#00ffcc");
+      gradient.addColorStop(1, "#0077ff");
+
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: xs,
+          datasets: [
+            {
+              label: "f(x)",
+              data: ys,
+              borderColor: gradient,
+              borderWidth: 3,
+              fill: false,
+              tension: 0.2
+            },
+            {
+              label: "Akar",
+              data: rootPoints,
+              borderColor: "red",
+              backgroundColor: "red",
+              pointRadius: 6,
+              type: "scatter",
+              showLine: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "x" } },
+            y: { title: { display: true, text: "f(x)" } }
+          },
+          plugins: {
+            legend: { labels: { color: "#000" } }
+          }
+        }
+      });
+    }
+
+    // ubah background
+    function changeBackground(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.body.style.background = `url(${e.target.result}) no-repeat center center fixed`;
+          document.body.style.backgroundSize = "cover";
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  </script>
+</body>
+</html>
